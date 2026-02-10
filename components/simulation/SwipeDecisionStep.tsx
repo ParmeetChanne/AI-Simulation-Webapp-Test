@@ -65,6 +65,7 @@ export default function SwipeDecisionStep({
           drag={isDisabled ? false : 'x'}
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.2}
+          style={{ x, rotate, backgroundColor: '#FFFFE3', borderColor: '#06402B', cursor: isDisabled ? 'not-allowed' : 'grab' }}
           onDragEnd={(_, info) => {
             if (isDisabled) return;
             const offsetX = info.offset.x;
@@ -80,13 +81,6 @@ export default function SwipeDecisionStep({
             }
           }}
           className="absolute inset-0 rounded-2xl border-2 shadow-lg overflow-hidden"
-          style={{
-            x,
-            rotate,
-            backgroundColor: '#FFFFE3',
-            borderColor: '#06402B',
-            cursor: isDisabled ? 'not-allowed' : 'grab',
-          }}
           whileTap={!isDisabled ? { cursor: 'grabbing' } : {}}
         >
           {/* Swipe labels */}
