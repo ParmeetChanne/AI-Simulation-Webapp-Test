@@ -7,18 +7,19 @@ import { Icon } from '@iconify/react';
 import Button from '@/components/ui/Button';
 import SimulationCard from '@/components/simulation/SimulationCard';
 import SimulationModal from '@/components/simulation/SimulationModal';
-import { macroeconomicSimulation } from '@/lib/simulation/macrosim';
+import { allSimulations } from '@/lib/simulation/registry';
 import { fadeInUp, staggerChildren } from '@/lib/utils/animations';
+import type { Simulation } from '@/types/simulation';
 
-// For now, we only have one simulation
-const simulations = [macroeconomicSimulation];
+// Hide Macroeconomic Policy Simulator from home page for now
+const simulations = allSimulations.filter((s) => s.id !== 'macroeconomic-policy');
 
 export default function HomePage() {
   const router = useRouter();
-  const [selectedSimulation, setSelectedSimulation] = useState<typeof macroeconomicSimulation | null>(null);
+  const [selectedSimulation, setSelectedSimulation] = useState<Simulation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleCardClick = (simulation: typeof macroeconomicSimulation) => {
+  const handleCardClick = (simulation: Simulation) => {
     setSelectedSimulation(simulation);
     setIsModalOpen(true);
   };
@@ -29,7 +30,7 @@ export default function HomePage() {
     }
   };
 
-  const handleStartDirectly = (simulation: typeof macroeconomicSimulation) => {
+  const handleStartDirectly = (simulation: Simulation) => {
     router.push(`/simulation/${simulation.id}`);
   };
 
@@ -60,7 +61,7 @@ export default function HomePage() {
             </motion.p>
             <motion.div variants={fadeInUp}>
               <button
-                onClick={() => handleCardClick(simulations[0])}
+                onClick={() => handleCardClick(simulations[0]!)}
                 className="px-8 py-4 text-lg cursor-pointer"
                 style={{ 
                   fontFamily: 'var(--font-inter)',

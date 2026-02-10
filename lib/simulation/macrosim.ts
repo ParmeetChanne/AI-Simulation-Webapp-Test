@@ -1,4 +1,4 @@
-import type { Simulation, EconomicState } from '@/types/simulation';
+import type { Simulation, SimulationState, MetricDefinition } from '@/types/simulation';
 import { initializeState } from './engine';
 
 /**
@@ -8,7 +8,15 @@ import { initializeState } from './engine';
  * governing Econland, dealing with various economic crises and policy decisions.
  */
 
-const initialState: EconomicState = initializeState();
+const initialState: SimulationState = initializeState();
+
+const macroMetrics: MetricDefinition[] = [
+  { key: 'inflation', label: 'Inflation', format: 'percent', min: 0, max: 20, chartType: 'line' },
+  { key: 'gdpGrowth', label: 'GDP Growth', format: 'percent', min: -10, max: 10, chartType: 'line' },
+  { key: 'unemployment', label: 'Unemployment', format: 'percent', min: 0, max: 20, chartType: 'bar' },
+  { key: 'governmentDebt', label: 'Gov. Debt', format: 'percent', min: 0, max: 200, chartType: 'line' },
+  { key: 'publicConfidence', label: 'Confidence', format: 'index', min: 0, max: 100, chartType: 'line' },
+];
 
 export const macroeconomicSimulation: Simulation = {
   id: 'macroeconomic-policy',
@@ -30,6 +38,11 @@ slowing growth, and public pressure ahead of elections. Each decision you make w
 the economy, affecting millions of lives. There are no right or wrong answers—only trade-offs and 
 consequences.`,
   initialState,
+  metrics: macroMetrics,
+  resultsConfig: {
+    chartMetrics: ['inflation', 'gdpGrowth', 'unemployment', 'publicConfidence'],
+    summaryMetrics: ['inflation', 'gdpGrowth', 'unemployment', 'governmentDebt', 'publicConfidence'],
+  },
   steps: [
     {
       id: 'oil_price_shock',

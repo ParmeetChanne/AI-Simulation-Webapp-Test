@@ -1,55 +1,77 @@
-import type { EconomicState, Decision, DecisionRecord } from '@/types/simulation';
+import type {
+  SimulationState,
+  Decision,
+  DecisionRecord,
+  MetricDefinition,
+} from '@/types/simulation';
 
 /**
  * Core simulation engine - applies decisions and calculates state changes
  */
 
 /**
- * Initialize default economic state
+ * Initialize default economic state (macro simulation)
  */
-export function initializeState(): EconomicState {
+export function initializeState(): SimulationState {
   return {
-    inflation: 2.5,           // 2.5% inflation (moderate)
-    gdpGrowth: 2.8,           // 2.8% GDP growth (healthy)
-    unemployment: 5.2,        // 5.2% unemployment (moderate)
-    governmentDebt: 65,       // 65% of GDP (moderate)
-    publicConfidence: 55,     // 55/100 (neutral-positive)
+    inflation: 2.5,
+    gdpGrowth: 2.8,
+    unemployment: 5.2,
+    governmentDebt: 65,
+    publicConfidence: 55,
   };
 }
 
 /**
- * Apply a decision's effects to the current economic state
+ * Clamp a value using optional min/max from a metric definition
  */
-export function applyDecision(
-  decision: Decision,
-  currentState: EconomicState
-): EconomicState {
-  const newState: EconomicState = { ...currentState };
+function clampValue(
+  value: number,
+  metric?: MetricDefinition
+): number {
+  if (!metric) return value;
+  let result = value;
+  if (metric.min !== undefined) result = Math.max(metric.min, result);
+  if (metric.max !== undefined) result = Math.min(metric.max, result);
+  return result;
+}
 
-  // Apply each effect from the decision
-  if (decision.effects.inflation !== undefined) {
-    newState.inflation = Math.max(0, newState.inflation + decision.effects.inflation);
-  }
-  if (decision.effects.gdpGrowth !== undefined) {
-    newState.gdpGrowth = Math.max(-10, Math.min(10, newState.gdpGrowth + decision.effects.gdpGrowth));
-  }
-  if (decision.effects.unemployment !== undefined) {
-    newState.unemployment = Math.max(0, Math.min(20, newState.unemployment + decision.effects.unemployment));
-  }
-  if (decision.effects.governmentDebt !== undefined) {
-    newState.governmentDebt = Math.max(0, Math.min(200, newState.governmentDebt + decision.effects.governmentDebt));
-  }
-  if (decision.effects.publicConfidence !== undefined) {
-    newState.publicConfidence = Math.max(0, Math.min(100, newState.publicConfidence + decision.effects.publicConfidence));
+/**
+ * Apply a delta map to state, with optional clamping by metric definitions.
+ */
+export function applyEffects(
+  currentState: SimulationState,
+  effects: Partial<SimulationState>,
+  metrics?: MetricDefinition[]
+): SimulationState {
+  const metricMap = new Map(metrics?.map((m) => [m.key, m]) ?? []);
+  const newState: SimulationState = { ...currentState };
+
+  for (const [key, delta] of Object.entries(effects)) {
+    if (delta === undefined) continue;
+    const prev = newState[key] ?? 0;
+    const metric = metricMap.get(key);
+    newState[key] = clampValue(prev + delta, metric);
   }
 
   return newState;
 }
 
 /**
+ * Apply a decision's effects to the current state.
+ */
+export function applyDecision(
+  decision: Decision,
+  currentState: SimulationState,
+  metrics?: MetricDefinition[]
+): SimulationState {
+  return applyEffects(currentState, decision.effects, metrics);
+}
+
+/**
  * Get the effects that a decision will have (returns delta values)
  */
-export function getStateEffects(decision: Decision): Partial<EconomicState> {
+export function getStateEffects(decision: Decision): Partial<SimulationState> {
   return decision.effects;
 }
 
@@ -59,8 +81,8 @@ export function getStateEffects(decision: Decision): Partial<EconomicState> {
 export function createDecisionRecord(
   stepId: string,
   decision: Decision,
-  stateBefore: EconomicState,
-  stateAfter: EconomicState
+  stateBefore: SimulationState,
+  stateAfter: SimulationState
 ): DecisionRecord {
   return {
     stepId,
@@ -73,18 +95,42 @@ export function createDecisionRecord(
 }
 
 /**
- * Format state value for display
+ * Format a single metric value for display
  */
-export function formatStateValue(key: keyof EconomicState, value: number): string {
-  switch (key) {
-    case 'inflation':
-    case 'gdpGrowth':
-    case 'unemployment':
-    case 'governmentDebt':
+export function formatMetricValue(
+  value: number,
+  metric: MetricDefinition
+): string {
+  switch (metric.format) {
+    case 'percent':
       return `${value.toFixed(1)}%`;
-    case 'publicConfidence':
+    case 'currency':
+      return `$${value.toFixed(2)}`;
+    case 'integer':
+      return Math.round(value).toString();
+    case 'index':
       return `${Math.round(value)}/100`;
     default:
       return value.toString();
   }
+}
+
+/**
+ * Get satisfaction-style label from a 0-100 index (for display only)
+ */
+export function getIndexLabel(value: number): 'High' | 'Medium' | 'Low' {
+  if (value >= 70) return 'High';
+  if (value >= 40) return 'Medium';
+  return 'Low';
+}
+
+/**
+ * Legacy: format state value by key (for backward compat when no metric def).
+ * Prefer formatMetricValue when simulation.metrics is available.
+ */
+export function formatStateValue(key: string, value: number): string {
+  const percentKeys = ['inflation', 'gdpGrowth', 'unemployment', 'governmentDebt'];
+  if (percentKeys.includes(key)) return `${value.toFixed(1)}%`;
+  if (key === 'publicConfidence') return `${Math.round(value)}/100`;
+  return value.toString();
 }

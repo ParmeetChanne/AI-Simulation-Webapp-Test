@@ -54,6 +54,23 @@ export default function DecisionStep({ step, onDecision, isProcessing = false }:
         )}
       </AnimatePresence>
 
+      {/* AI Explanation (after decision, when step provides one) */}
+      <AnimatePresence>
+        {selectedDecision && step.aiExplanation && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="rounded-lg p-4 border-2 border-dashed"
+            style={{ backgroundColor: '#FFFFE3', borderColor: '#03594D' }}
+          >
+            <p className="text-sm italic" style={{ fontFamily: 'var(--font-inter)', letterSpacing: '-0.04em', color: '#06402B', fontWeight: 500 }}>
+              {step.aiExplanation}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Decision Options */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {step.decisions.map((decision, index) => {

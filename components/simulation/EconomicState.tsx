@@ -2,57 +2,94 @@
 
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
-import type { EconomicState } from '@/types/simulation';
-import { formatStateValue } from '@/lib/simulation/engine';
+import type { SimulationState, MetricDefinition } from '@/types/simulation';
+import { formatMetricValue, getIndexLabel } from '@/lib/simulation/engine';
+
+const DEFAULT_ICON = 'solar:chart-2-bold';
+const METRIC_ICONS: Record<string, string> = {
+  inflation: 'solar:chart-2-bold',
+  gdpGrowth: 'solar:graph-up-bold',
+  unemployment: 'solar:users-group-two-rounded-bold',
+  governmentDebt: 'solar:bill-list-bold',
+  publicConfidence: 'solar:heart-pulse-bold',
+  coffeePrice: 'solar:cup-bold',
+  dailyDemand: 'solar:users-group-rounded-bold',
+  wage: 'solar:wallet-money-bold',
+  workers: 'solar:users-group-two-rounded-bold',
+  dailyProfit: 'solar:chart-bold',
+  studentSatisfaction: 'solar:heart-pulse-bold',
+  activeUsers: 'solar:users-group-rounded-bold',
+  partnerRestaurants: 'solar:fork-knife-bold',
+  averageCommissionPct: 'solar:tag-price-bold',
+  platformProfit: 'solar:chart-bold',
+  userSatisfaction: 'solar:heart-pulse-bold',
+  competitivePressure: 'solar:shield-warning-bold',
+};
 
 interface EconomicStateProps {
-  state: EconomicState;
-  previousState?: EconomicState;
+  state: SimulationState;
+  metrics: MetricDefinition[];
+  previousState?: SimulationState;
 }
 
-export default function EconomicStateDisplay({ state, previousState }: EconomicStateProps) {
-  const getStateChange = (key: keyof EconomicState) => {
-    if (!previousState) return null;
+const STATE_GREEN = '#06402B';
+
+type ValueColor = { className?: string; style?: React.CSSProperties };
+
+function getValueColor(metric: MetricDefinition, value: number): ValueColor {
+  if (metric.format === 'index') {
+    if (metric.key === 'competitivePressure') {
+      if (value >= 70) return { className: 'text-red-600 dark:text-red-400' };
+      if (value >= 40) return { className: 'text-yellow-600 dark:text-yellow-400' };
+      return { style: { color: STATE_GREEN } };
+    }
+    if (value >= 70) return { style: { color: STATE_GREEN } };
+    if (value >= 40) return { className: 'text-yellow-600 dark:text-yellow-400' };
+    return { className: 'text-red-600 dark:text-red-400' };
+  }
+  // Cafe + Campus Delivery state metrics: use black
+  const blackValueMetrics = [
+    'coffeePrice', 'dailyDemand', 'wage', 'workers',
+    'activeUsers', 'partnerRestaurants', 'averageCommissionPct', 'platformProfit',
+  ];
+  if (blackValueMetrics.includes(metric.key)) {
+    return { className: 'text-black' };
+  }
+  if (metric.key === 'dailyProfit' || metric.key === 'platformProfit' || metric.key === 'gdpGrowth') {
+    if (value > 0) return { style: { color: STATE_GREEN } };
+    if (value < 0) return { className: 'text-red-600 dark:text-red-400' };
+    return { className: 'text-slate-600 dark:text-slate-400' };
+  }
+  if (metric.key === 'unemployment') {
+    if (value > 7) return { className: 'text-red-600 dark:text-red-400' };
+    if (value < 4) return { style: { color: STATE_GREEN } };
+    return { className: 'text-yellow-600 dark:text-yellow-400' };
+  }
+  return { className: 'text-slate-700 dark:text-slate-300' };
+}
+
+export default function EconomicStateDisplay({ state, metrics, previousState }: EconomicStateProps) {
+  const getStateChange = (key: string) => {
+    if (!previousState || state[key] === undefined || previousState[key] === undefined) return null;
     const change = state[key] - previousState[key];
-    if (Math.abs(change) < 0.1) return null;
+    if (Math.abs(change) < 0.01) return null;
     return change > 0 ? 'up' : 'down';
   };
 
-  const getValueColor = (key: keyof EconomicState, value: number) => {
-    switch (key) {
-      case 'inflation':
-        return value > 3 ? 'text-red-600 dark:text-red-400' : value < 2 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400';
-      case 'gdpGrowth':
-        return value > 3 ? 'text-green-600 dark:text-green-400' : value < 1 ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400';
-      case 'unemployment':
-        return value > 7 ? 'text-red-600 dark:text-red-400' : value < 4 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400';
-      case 'governmentDebt':
-        return value > 80 ? 'text-red-600 dark:text-red-400' : value < 50 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400';
-      case 'publicConfidence':
-        return value > 70 ? 'text-green-600 dark:text-green-400' : value < 40 ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400';
-      default:
-        return 'text-slate-600 dark:text-slate-400';
-    }
-  };
-
-  const stateItems: Array<{ key: keyof EconomicState; label: string; icon: string }> = [
-    { key: 'inflation', label: 'Inflation', icon: 'solar:chart-2-bold' },
-    { key: 'gdpGrowth', label: 'GDP Growth', icon: 'solar:graph-up-bold' },
-    { key: 'unemployment', label: 'Unemployment', icon: 'solar:users-group-two-rounded-bold' },
-    { key: 'governmentDebt', label: 'Gov. Debt', icon: 'solar:bill-list-bold' },
-    { key: 'publicConfidence', label: 'Confidence', icon: 'solar:heart-pulse-bold' },
-  ];
-
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-      {stateItems.map((item, index) => {
-        const change = getStateChange(item.key);
-        const value = state[item.key];
-        const color = getValueColor(item.key, value);
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      {metrics.map((metric, index) => {
+        const value = state[metric.key] ?? 0;
+        const change = getStateChange(metric.key);
+        const valueColor = getValueColor(metric, value);
+        const icon = METRIC_ICONS[metric.key] ?? DEFAULT_ICON;
+        const displayText = metric.format === 'index'
+          ? `${Math.round(value)}/100 (${getIndexLabel(value)})`
+          : formatMetricValue(value, metric);
 
         return (
           <motion.div
-            key={item.key}
+            key={metric.key}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.05 }}
@@ -60,7 +97,7 @@ export default function EconomicStateDisplay({ state, previousState }: EconomicS
             style={{ backgroundColor: '#82EDA6', borderColor: '#06402B' }}
           >
             <div className="flex items-center justify-between mb-2">
-              <Icon icon={item.icon} className="w-5 h-5" style={{ color: '#06402B' }} />
+              <Icon icon={icon} className="w-5 h-5" style={{ color: '#06402B' }} />
               {change && (
                 <motion.div
                   initial={{ scale: 0 }}
@@ -75,10 +112,13 @@ export default function EconomicStateDisplay({ state, previousState }: EconomicS
               )}
             </div>
             <div className="text-xs mb-1 font-medium" style={{ color: '#06402B', fontFamily: 'var(--font-inter)' }}>
-              {item.label}
+              {metric.label}
             </div>
-            <div className="text-lg font-bold" style={{ color: '#06402B', fontFamily: 'var(--font-inter)' }}>
-              {formatStateValue(item.key, value)}
+            <div
+              className={`text-lg font-bold ${valueColor.className ?? ''}`}
+              style={{ ...valueColor.style, fontFamily: 'var(--font-inter)' }}
+            >
+              {displayText}
             </div>
           </motion.div>
         );

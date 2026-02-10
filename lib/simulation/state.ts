@@ -1,4 +1,4 @@
-import type { SimulationSession, EconomicState, DecisionRecord } from '@/types/simulation';
+import type { SimulationSession, SimulationState, DecisionRecord } from '@/types/simulation';
 import { saveSimulationState, loadSimulationState, clearSimulationState } from '@/lib/utils/storage';
 
 /**
@@ -10,7 +10,7 @@ import { saveSimulationState, loadSimulationState, clearSimulationState } from '
  */
 export function createSession(
   simulationId: string,
-  initialState: EconomicState
+  initialState: SimulationState
 ): SimulationSession {
   const session: SimulationSession = {
     simulationId,
@@ -18,6 +18,7 @@ export function createSession(
     state: { ...initialState },
     decisionHistory: [],
     startedAt: Date.now(),
+    externalEffectsApplied: [],
   };
 
   saveSimulationState(simulationId, session);
@@ -29,7 +30,7 @@ export function createSession(
  */
 export function getOrCreateSession(
   simulationId: string,
-  initialState: EconomicState
+  initialState: SimulationState
 ): SimulationSession {
   const existing = loadSimulationState(simulationId);
   
@@ -45,7 +46,7 @@ export function getOrCreateSession(
  */
 export function updateSessionState(
   simulationId: string,
-  newState: EconomicState,
+  newState: SimulationState,
   decisionRecord: DecisionRecord,
   nextStep: number
 ): SimulationSession {
@@ -67,11 +68,56 @@ export function updateSessionState(
 }
 
 /**
+ * Advance the current step without adding a decision record.
+ * Useful for informational/interstitial steps (e.g. round summaries).
+ */
+export function advanceSessionStep(
+  simulationId: string,
+  nextStep: number
+): SimulationSession {
+  const session = loadSimulationState(simulationId) as SimulationSession;
+  if (!session) {
+    throw new Error('Session not found');
+  }
+
+  const updatedSession: SimulationSession = {
+    ...session,
+    currentStep: nextStep,
+  };
+
+  saveSimulationState(simulationId, updatedSession);
+  return updatedSession;
+}
+
+/**
+ * Apply external effects for a step once and persist (step id marked as applied).
+ */
+export function applyExternalEffectsForStep(
+  simulationId: string,
+  stepId: string,
+  newState: SimulationState
+): SimulationSession {
+  const session = loadSimulationState(simulationId) as SimulationSession;
+  if (!session) throw new Error('Session not found');
+
+  const applied = session.externalEffectsApplied ?? [];
+  if (applied.includes(stepId)) return session;
+
+  const updatedSession: SimulationSession = {
+    ...session,
+    state: newState,
+    externalEffectsApplied: [...applied, stepId],
+  };
+  saveSimulationState(simulationId, updatedSession);
+  return updatedSession;
+}
+
+/**
  * Reset session (clear and start fresh)
  */
 export function resetSession(
   simulationId: string,
-  initialState: EconomicState
+  initialState: SimulationState
 ): SimulationSession {
   clearSimulationState(simulationId);
   return createSession(simulationId, initialState);

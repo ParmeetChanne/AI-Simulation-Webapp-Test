@@ -2,22 +2,34 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import Button from '@/components/ui/Button';
 import EconomicChart from '@/components/charts/EconomicChart';
-import type { EconomicState, DecisionRecord } from '@/types/simulation';
+import type { SimulationState, DecisionRecord, MetricDefinition, ResultsConfig } from '@/types/simulation';
+import { formatMetricValue } from '@/lib/simulation/engine';
 
 interface ResultsDashboardProps {
-  initialState: EconomicState;
-  finalState: EconomicState;
+  initialState: SimulationState;
+  finalState: SimulationState;
   decisionHistory: DecisionRecord[];
+  metrics: MetricDefinition[];
+  resultsConfig?: ResultsConfig;
 }
+
+const CHART_COLORS = ['#06402B', '#03594D', '#0d5c3d', '#82EDA6', '#06402B', '#03594D'];
 
 export default function ResultsDashboard({
   initialState,
   finalState,
   decisionHistory,
+  metrics,
+  resultsConfig,
 }: ResultsDashboardProps) {
   const [revealed, setRevealed] = useState(false);
+
+  const chartMetrics = resultsConfig?.chartMetrics
+    ? metrics.filter((m) => resultsConfig.chartMetrics!.includes(m.key) && m.chartType)
+    : metrics.filter((m) => m.chartType);
+  const summaryKeys = resultsConfig?.summaryMetrics ?? metrics.map((m) => m.key);
+  const summaryMetrics = metrics.filter((m) => summaryKeys.includes(m.key));
 
   const handleReveal = () => {
     setRevealed(true);
@@ -30,7 +42,7 @@ export default function ResultsDashboard({
           <button
             onClick={handleReveal}
             className="px-8 py-4 text-lg cursor-pointer"
-            style={{ 
+            style={{
               fontFamily: 'var(--font-inter)',
               fontWeight: 700,
               backgroundColor: '#82EDA6',
@@ -62,80 +74,45 @@ export default function ResultsDashboard({
           animate={{ opacity: 1 }}
           className="space-y-6"
         >
-          {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <EconomicChart
-              type="line"
-              title="Inflation Rate"
-              initialState={initialState}
-              finalState={finalState}
-              decisionHistory={decisionHistory}
-              dataKey="inflation"
-              color="#ef4444"
-              delay={0.1}
-            />
-            <EconomicChart
-              type="line"
-              title="GDP Growth"
-              initialState={initialState}
-              finalState={finalState}
-              decisionHistory={decisionHistory}
-              dataKey="gdpGrowth"
-              color="#10b981"
-              delay={0.2}
-            />
-            <EconomicChart
-              type="bar"
-              title="Unemployment Rate"
-              initialState={initialState}
-              finalState={finalState}
-              decisionHistory={decisionHistory}
-              dataKey="unemployment"
-              color="#f59e0b"
-              delay={0.3}
-            />
-            <EconomicChart
-              type="line"
-              title="Public Confidence"
-              initialState={initialState}
-              finalState={finalState}
-              decisionHistory={decisionHistory}
-              dataKey="publicConfidence"
-              color="#8b5cf6"
-              delay={0.4}
-            />
+            {chartMetrics.map((metric, index) => (
+              <EconomicChart
+                key={metric.key}
+                type={metric.chartType ?? 'line'}
+                metric={metric}
+                initialState={initialState}
+                finalState={finalState}
+                decisionHistory={decisionHistory}
+                color={CHART_COLORS[index % CHART_COLORS.length]}
+                delay={0.1 * (index + 1)}
+              />
+            ))}
           </div>
 
-          {/* Summary Stats */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="grid grid-cols-2 md:grid-cols-5 gap-4 rounded-xl p-6 border-2"
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 rounded-xl p-6 border-2"
             style={{ backgroundColor: '#FFFFE3', borderColor: '#06402B' }}
           >
-            {(['inflation', 'gdpGrowth', 'unemployment', 'governmentDebt', 'publicConfidence'] as Array<keyof EconomicState>).map((key) => {
-              const change = finalState[key] - initialState[key];
+            {summaryMetrics.map((metric) => {
+              const initialVal = initialState[metric.key] ?? 0;
+              const finalVal = finalState[metric.key] ?? 0;
+              const change = finalVal - initialVal;
               const isPositive = change > 0;
               return (
-                <div key={key} className="text-center">
-                  <div className="text-xs mb-1 capitalize font-medium" style={{ color: '#06402B', fontFamily: 'var(--font-inter)' }}>
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                <div key={metric.key} className="text-center">
+                  <div className="text-xs mb-1 font-medium" style={{ color: '#06402B', fontFamily: 'var(--font-inter)' }}>
+                    {metric.label}
                   </div>
                   <div className="text-lg font-bold" style={{ color: '#06402B', fontFamily: 'var(--font-inter)' }}>
-                    {key === 'publicConfidence'
-                      ? `${Math.round(finalState[key])}/100`
-                      : `${finalState[key].toFixed(1)}%`}
+                    {formatMetricValue(finalVal, metric)}
                   </div>
-                  <div
-                    className="text-sm font-medium"
-                    style={{ color: '#06402B', fontFamily: 'var(--font-inter)' }}
-                  >
-                    {isPositive ? '+' : ''}
-                    {key === 'publicConfidence'
-                      ? Math.round(change)
-                      : change.toFixed(1)}
-                    {key !== 'publicConfidence' && '%'}
+                  <div className="text-sm font-medium" style={{ color: '#06402B', fontFamily: 'var(--font-inter)' }}>
+                    {metric.format === 'currency' && (isPositive ? '+' : '') + `$${change.toFixed(2)}`}
+                    {metric.format === 'percent' && (isPositive ? '+' : '') + `${change.toFixed(1)}%`}
+                    {(metric.format === 'integer' || metric.format === 'index') && (isPositive ? '+' : '') + Math.round(change).toString()}
                   </div>
                 </div>
               );

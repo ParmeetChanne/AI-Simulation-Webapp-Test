@@ -1,12 +1,24 @@
 /**
- * Economic State - Core simulation state variables
+ * Simulation state is a generic map of metric keys to numeric values.
+ * Each simulation defines its own metrics via MetricDefinition[].
  */
-export interface EconomicState {
-  inflation: number;        // Inflation rate (%)
-  gdpGrowth: number;        // GDP Growth rate (%)
-  unemployment: number;     // Unemployment rate (%)
-  governmentDebt: number;   // Government debt (% of GDP)
-  publicConfidence: number; // Public confidence index (0-100)
+export type SimulationState = Record<string, number>;
+
+/**
+ * Backward compatibility: macro simulation and others use the same state shape.
+ */
+export type EconomicState = SimulationState;
+
+/**
+ * How a metric is displayed and optionally charted.
+ */
+export interface MetricDefinition {
+  key: string;
+  label: string;
+  format: 'percent' | 'currency' | 'integer' | 'index'; // index = 0-100 scale
+  min?: number;
+  max?: number;
+  chartType?: 'line' | 'bar';
 }
 
 /**
@@ -15,17 +27,28 @@ export interface EconomicState {
 export interface Decision {
   id: string;
   text: string;
-  effects: Partial<EconomicState>; // State changes this decision causes
-  feedback?: string; // Optional narrative feedback after selection
+  effects: Partial<SimulationState>;
+  feedback?: string;
 }
 
 /**
- * Decision Step - A single event/decision point in the simulation
+ * Decision Step - A single event/decision point in the simulation.
+ * externalEffects are applied once when the step is entered (system-controlled shock).
  */
 export interface DecisionStep {
   id: string;
-  event: string; // Narrative event description
-  decisions: Decision[]; // Array of 4 decision options
+  event: string;
+  decisions: Decision[];
+  externalEffects?: Partial<SimulationState>;
+  aiExplanation?: string;
+}
+
+/**
+ * Configuration for results summary and narrative.
+ */
+export interface ResultsConfig {
+  chartMetrics?: string[]; // metric keys to chart; defaults to all with chartType
+  summaryMetrics?: string[]; // metric keys to show in summary cards
 }
 
 /**
@@ -36,11 +59,14 @@ export interface Simulation {
   title: string;
   description: string;
   tags: string[];
-  timeEstimate: string; // e.g., "2-3 mins"
-  concepts: string[]; // Economic concepts covered
-  context: string; // Story context for the simulation
+  timeEstimate: string;
+  concepts: string[];
+  context: string;
   steps: DecisionStep[];
-  initialState: EconomicState;
+  initialState: SimulationState;
+  metrics: MetricDefinition[];
+  resultsConfig?: ResultsConfig;
+  reflectionQuestions?: string[];
 }
 
 /**
@@ -50,8 +76,8 @@ export interface DecisionRecord {
   stepId: string;
   decisionId: string;
   decisionText: string;
-  stateBefore: EconomicState;
-  stateAfter: EconomicState;
+  stateBefore: SimulationState;
+  stateAfter: SimulationState;
   timestamp: number;
 }
 
@@ -60,19 +86,21 @@ export interface DecisionRecord {
  */
 export interface SimulationResult {
   simulationId: string;
-  initialState: EconomicState;
-  finalState: EconomicState;
+  initialState: SimulationState;
+  finalState: SimulationState;
   decisionHistory: DecisionRecord[];
   completedAt: number;
 }
 
 /**
- * Simulation Session - Active simulation state
+ * Simulation Session - Active simulation state.
+ * externalEffectsApplied: step ids for which external effects have already been applied.
  */
 export interface SimulationSession {
   simulationId: string;
   currentStep: number;
-  state: EconomicState;
+  state: SimulationState;
   decisionHistory: DecisionRecord[];
   startedAt: number;
+  externalEffectsApplied?: string[];
 }

@@ -39,10 +39,10 @@ export default function SimulationModal({
             What you&apos;ll do:
           </h3>
           <ul className="list-disc list-inside space-y-1" style={{ fontFamily: 'var(--font-inter)', letterSpacing: '-0.04em', color: '#06402B', fontWeight: 500 }}>
-            <li>Make critical economic policy decisions as an Economic Policy Advisor</li>
-            <li>See real-time impacts on inflation, GDP, unemployment, and more</li>
-            <li>Experience how policy choices create trade-offs and consequences</li>
-            <li>Learn key macroeconomic concepts through interactive decision-making</li>
+            <li>Make a sequence of strategic decisions in a realistic scenario</li>
+            <li>See real-time impacts on key metrics (demand, satisfaction, profit, and more)</li>
+            <li>Experience how choices create trade-offs and consequences</li>
+            <li>Learn core concepts through interactive decision-making</li>
           </ul>
         </div>
 

@@ -8,20 +8,18 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import ResultsDashboard from '@/components/simulation/ResultsDashboard';
 import DecisionHistory from '@/components/simulation/DecisionHistory';
-import { macroeconomicSimulation } from '@/lib/simulation/macrosim';
+import { getSimulation } from '@/lib/simulation/registry';
 import { getCurrentSession, resetSession } from '@/lib/simulation/state';
+import { getConceptDescription } from '@/lib/simulation/conceptDescriptions';
+import { formatMetricValue } from '@/lib/simulation/engine';
 import type { SimulationResult } from '@/types/simulation';
 import { fadeInUp } from '@/lib/utils/animations';
-
-const simulations: Record<string, typeof macroeconomicSimulation> = {
-  'macroeconomic-policy': macroeconomicSimulation,
-};
 
 export default function ResultsPage() {
   const router = useRouter();
   const params = useParams();
   const simulationId = params.id as string;
-  const simulation = simulations[simulationId];
+  const simulation = getSimulation(simulationId);
 
   const [result, setResult] = useState<SimulationResult | null>(null);
 
@@ -75,35 +73,23 @@ export default function ResultsPage() {
 
   const getNarrativeExplanation = () => {
     const { finalState, initialState } = result;
-    const explanations: string[] = [];
+    const summaryKeys = simulation.resultsConfig?.summaryMetrics ?? simulation.metrics.map((m) => m.key);
+    const parts: string[] = [];
 
-    if (finalState.inflation > initialState.inflation + 1) {
-      explanations.push('Inflation rose significantly, putting pressure on consumer purchasing power.');
-    } else if (finalState.inflation < initialState.inflation - 1) {
-      explanations.push('Inflation was successfully controlled, providing price stability.');
+    for (const metric of simulation.metrics) {
+      if (!summaryKeys.includes(metric.key)) continue;
+      const init = initialState[metric.key] ?? 0;
+      const final = finalState[metric.key] ?? 0;
+      const change = final - init;
+      if (Math.abs(change) < 0.01) continue;
+      parts.push(
+        `${metric.label} went from ${formatMetricValue(init, metric)} to ${formatMetricValue(final, metric)}.`
+      );
     }
 
-    if (finalState.gdpGrowth > initialState.gdpGrowth + 1) {
-      explanations.push('The economy experienced strong growth, creating opportunities for businesses and workers.');
-    } else if (finalState.gdpGrowth < initialState.gdpGrowth - 1) {
-      explanations.push('Economic growth slowed, reflecting the trade-offs in your policy choices.');
-    }
-
-    if (finalState.unemployment > initialState.unemployment + 1) {
-      explanations.push('Unemployment increased, impacting workers and families across the economy.');
-    } else if (finalState.unemployment < initialState.unemployment - 1) {
-      explanations.push('Employment improved as policies supported job creation and economic activity.');
-    }
-
-    if (finalState.publicConfidence > 70) {
-      explanations.push('Public confidence remained strong, reflecting trust in economic management.');
-    } else if (finalState.publicConfidence < 40) {
-      explanations.push('Public confidence declined, signaling frustration with economic outcomes.');
-    }
-
-    return explanations.length > 0
-      ? explanations.join(' ')
-      : 'Your policy decisions created a balanced economic outcome, with moderate changes across key indicators.';
+    return parts.length > 0
+      ? 'Your decisions led to these outcomes: ' + parts.join(' ')
+      : 'Your decisions created a balanced outcome, with moderate changes across key indicators.';
   };
 
   return (
@@ -119,7 +105,7 @@ export default function ResultsPage() {
             Simulation Complete!
           </h1>
           <p className="text-lg" style={{ fontFamily: 'var(--font-inter)', letterSpacing: '-0.04em', color: '#06402B', fontWeight: 500 }}>
-            Review your economic policy decisions and their outcomes
+            Review your decisions and their outcomes
           </p>
         </motion.div>
 
@@ -134,6 +120,8 @@ export default function ResultsPage() {
             initialState={result.initialState}
             finalState={result.finalState}
             decisionHistory={result.decisionHistory}
+            metrics={simulation.metrics}
+            resultsConfig={simulation.resultsConfig}
           />
         </motion.div>
 
@@ -178,20 +166,7 @@ export default function ResultsPage() {
                     {concept}
                   </h3>
                   <p className="text-sm" style={{ fontFamily: 'var(--font-inter)', letterSpacing: '-0.04em', color: '#06402B', fontWeight: 500 }}>
-                    {concept === 'AD-AS Model' &&
-                      'Aggregate Demand-Aggregate Supply model shows how price levels and output interact in the economy.'}
-                    {concept === 'Phillips Curve' &&
-                      'The relationship between inflation and unemployment, showing trade-offs in macroeconomic policy.'}
-                    {concept === 'Monetary Policy' &&
-                      'Central bank actions (interest rates) that influence money supply, inflation, and economic growth.'}
-                    {concept === 'Fiscal Policy' &&
-                      'Government spending and taxation decisions that affect aggregate demand and economic activity.'}
-                    {concept === 'Interest Rates' &&
-                      'The cost of borrowing money, a key tool for controlling inflation and stimulating growth.'}
-                    {concept === 'Inflation' &&
-                      'The rate at which prices rise, eroding purchasing power but sometimes accompanying growth.'}
-                    {concept === 'Unemployment' &&
-                      'The percentage of workers without jobs, a key indicator of economic health and social welfare.'}
+                    {getConceptDescription(concept)}
                   </p>
                 </div>
               ))}
@@ -228,38 +203,21 @@ export default function ResultsPage() {
               Reflection Questions
             </h2>
             <ul className="space-y-3" style={{ fontFamily: 'var(--font-inter)', letterSpacing: '-0.04em', color: '#06402B', fontWeight: 500 }}>
-              <li className="flex items-start">
-                <Icon
-                  icon="solar:question-circle-bold"
-                  className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0"
-                  style={{ color: '#06402B' }}
-                />
-                <span>What if you had chosen different policies at key decision points?</span>
-              </li>
-              <li className="flex items-start">
-                <Icon
-                  icon="solar:question-circle-bold"
-                  className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0"
-                  style={{ color: '#06402B' }}
-                />
-                <span>Who benefited from your decisions, and who bore the costs?</span>
-              </li>
-              <li className="flex items-start">
-                <Icon
-                  icon="solar:question-circle-bold"
-                  className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0"
-                  style={{ color: '#06402B' }}
-                />
-                <span>How did short-term decisions affect long-term economic stability?</span>
-              </li>
-              <li className="flex items-start">
-                <Icon
-                  icon="solar:question-circle-bold"
-                  className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0"
-                  style={{ color: '#06402B' }}
-                />
-                <span>What trade-offs did you face between inflation, growth, and unemployment?</span>
-              </li>
+              {(simulation.reflectionQuestions ?? [
+                'What if you had chosen different options at key decision points?',
+                'Who benefited from your decisions, and who bore the costs?',
+                'How did short-term decisions affect long-term outcomes?',
+                'What trade-offs did you face between growth, profit, and satisfaction?',
+              ]).map((q) => (
+                <li key={q} className="flex items-start">
+                  <Icon
+                    icon="solar:question-circle-bold"
+                    className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0"
+                    style={{ color: '#06402B' }}
+                  />
+                  <span>{q}</span>
+                </li>
+              ))}
             </ul>
           </Card>
         </motion.div>

@@ -14,7 +14,8 @@ import {
   Filler,
 } from 'chart.js';
 import { motion } from 'framer-motion';
-import type { EconomicState } from '@/types/simulation';
+import type { SimulationState, MetricDefinition } from '@/types/simulation';
+import { formatMetricValue } from '@/lib/simulation/engine';
 
 ChartJS.register(
   CategoryScale,
@@ -30,41 +31,42 @@ ChartJS.register(
 
 interface EconomicChartProps {
   type: 'line' | 'bar';
-  title: string;
-  initialState: EconomicState;
-  finalState: EconomicState;
-  decisionHistory: Array<{ stateAfter: EconomicState }>;
-  dataKey: keyof EconomicState;
+  metric: MetricDefinition;
+  initialState: SimulationState;
+  finalState: SimulationState;
+  decisionHistory: Array<{ stateAfter: SimulationState }>;
   color?: string;
   delay?: number;
 }
 
 export default function EconomicChart({
   type,
-  title,
+  metric,
   initialState,
   finalState,
   decisionHistory,
-  dataKey,
-  color = '#0ea5e9',
+  color,
   delay = 0,
 }: EconomicChartProps) {
-  // Create data points: start, after each decision, end
+  const dataKey = metric.key;
   const labels = ['Start', ...decisionHistory.map((_, i) => `Step ${i + 1}`), 'End'];
   const dataPoints = [
-    initialState[dataKey],
-    ...decisionHistory.map((record) => record.stateAfter[dataKey]),
-    finalState[dataKey],
+    initialState[dataKey] ?? 0,
+    ...decisionHistory.map((record) => record.stateAfter[dataKey] ?? 0),
+    finalState[dataKey] ?? 0,
   ];
+
+  const lineColor = color ?? '#06402B';
+  const fillColor = type === 'bar' ? lineColor : `${lineColor}20`;
 
   const chartData = {
     labels,
     datasets: [
       {
-        label: title,
+        label: metric.label,
         data: dataPoints,
-        borderColor: color,
-        backgroundColor: type === 'bar' ? color : `${color}20`,
+        borderColor: lineColor,
+        backgroundColor: fillColor,
         fill: type === 'line',
         tension: 0.4,
         borderWidth: 3,
@@ -83,12 +85,9 @@ export default function EconomicChart({
       },
       tooltip: {
         callbacks: {
-          label: (context: any) => {
-            const value = context.parsed.y;
-            if (dataKey === 'publicConfidence') {
-              return `${title}: ${Math.round(value)}/100`;
-            }
-            return `${title}: ${value.toFixed(1)}%`;
+          label: (context: { parsed: { y?: number | null } }) => {
+            const value = context.parsed?.y ?? 0;
+            return `${metric.label}: ${formatMetricValue(value, metric)}`;
           },
         },
       },
@@ -97,20 +96,24 @@ export default function EconomicChart({
       y: {
         beginAtZero: false,
         grid: {
-          color: 'rgba(148, 163, 184, 0.1)',
+          color: 'rgba(6, 64, 43, 0.12)',
         },
         ticks: {
-          callback: (value: any) => {
-            if (dataKey === 'publicConfidence') {
-              return `${value}/100`;
-            }
-            return `${value}%`;
+          color: '#06402B',
+          font: { family: 'var(--font-inter)' },
+          callback: (value: string | number) => {
+            const n = typeof value === 'string' ? parseFloat(value) : value;
+            return formatMetricValue(n, metric);
           },
         },
       },
       x: {
         grid: {
           display: false,
+        },
+        ticks: {
+          color: '#06402B',
+          font: { family: 'var(--font-inter)' },
         },
       },
     },
@@ -123,13 +126,21 @@ export default function EconomicChart({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5 }}
-      className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-lg"
+      className="rounded-xl p-6 border-2"
+      style={{
+        backgroundColor: '#FFFFE3',
+        borderColor: '#06402B',
+        boxShadow: '4px 4px 0px 0px #03594D, 0px 0px 0px 2px #06402B',
+      }}
     >
-      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-        {title}
+      <h3
+        className="text-lg font-semibold mb-4"
+        style={{ color: '#06402B', fontFamily: 'var(--font-inter)' }}
+      >
+        {metric.label}
       </h3>
       <div className="h-64">
-        <ChartComponent data={chartData} options={options} />
+        <ChartComponent data={chartData} options={options as object} />
       </div>
     </motion.div>
   );

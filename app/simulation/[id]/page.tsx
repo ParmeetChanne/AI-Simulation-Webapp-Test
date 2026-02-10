@@ -7,19 +7,15 @@ import { Icon } from '@iconify/react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import QRCode from '@/components/ui/QRCode';
-import { macroeconomicSimulation } from '@/lib/simulation/macrosim';
+import { getSimulation } from '@/lib/simulation/registry';
 import { resetSession } from '@/lib/simulation/state';
 import { fadeInUp } from '@/lib/utils/animations';
-
-const simulations: Record<string, typeof macroeconomicSimulation> = {
-  'macroeconomic-policy': macroeconomicSimulation,
-};
 
 export default function SimulationStartPage() {
   const router = useRouter();
   const params = useParams();
   const simulationId = params.id as string;
-  const simulation = simulations[simulationId];
+  const simulation = getSimulation(simulationId);
   const [shareableLink, setShareableLink] = useState('');
 
   useEffect(() => {
