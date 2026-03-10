@@ -65,7 +65,7 @@ export default function DecisionStep({ step, onDecision, isProcessing = false }:
             style={{ backgroundColor: '#FFFFE3', borderColor: '#03594D' }}
           >
             <p className="text-sm italic" style={{ fontFamily: 'var(--font-inter)', letterSpacing: '-0.04em', color: '#06402B', fontWeight: 500 }}>
-              {step.aiExplanation}
+              Concept: {step.aiExplanation}
             </p>
           </motion.div>
         )}

@@ -60,7 +60,7 @@ export default function SwipeDecisionStep({
   return (
     <div className="space-y-6">
       {/* Card area */}
-      <div className="relative h-[360px] md:h-[420px]">
+      <div className="relative h-[300px] md:h-[340px] lg:h-[300px]">
         <motion.div
           drag={isDisabled ? false : 'x'}
           dragConstraints={{ left: 0, right: 0 }}
@@ -105,8 +105,8 @@ export default function SwipeDecisionStep({
             <span style={{ color: '#06402B' }}>Reject</span>
           </motion.div>
 
-          <div className="p-6 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4">
+          <div className="p-5 md:p-6 lg:p-4 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-3 lg:mb-2">
               <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#06402B', fontFamily: 'var(--font-inter)' }}>
                 Swipe left or right
               </div>
@@ -116,7 +116,7 @@ export default function SwipeDecisionStep({
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 lg:flex-none overflow-auto min-h-0">
               <p
                 className="text-lg leading-relaxed whitespace-pre-line"
                 style={{ fontFamily: 'var(--font-inter)', letterSpacing: '-0.04em', color: '#06402B', fontWeight: 600 }}
@@ -125,7 +125,7 @@ export default function SwipeDecisionStep({
               </p>
             </div>
 
-            <div className="pt-4 text-xs" style={{ color: '#06402B', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+            <div className="pt-4 lg:pt-2 text-xs" style={{ color: '#06402B', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
               Tip: you can also use the buttons below.
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function SwipeDecisionStep({
             style={{ backgroundColor: '#FFFFE3', borderColor: '#03594D' }}
           >
             <p className="text-sm italic" style={{ fontFamily: 'var(--font-inter)', letterSpacing: '-0.04em', color: '#06402B', fontWeight: 500 }}>
-              {step.aiExplanation}
+              Concept: {step.aiExplanation}
             </p>
           </motion.div>
         )}

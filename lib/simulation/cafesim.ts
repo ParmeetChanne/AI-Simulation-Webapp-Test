@@ -40,7 +40,7 @@ export const cafeSimulation: Simulation = {
   metrics: cafeMetrics,
   resultsConfig: {
     chartMetrics: ['dailyProfit', 'coffeePrice', 'dailyDemand', 'studentSatisfaction', 'workers'],
-    summaryMetrics: ['dailyProfit', 'coffeePrice', 'workers', 'studentSatisfaction'],
+    summaryMetrics: ['coffeePrice', 'dailyDemand', 'workers', 'dailyProfit', 'studentSatisfaction'],
   },
   steps: [
     {
